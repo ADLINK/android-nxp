@@ -1,58 +1,26 @@
-## ADLINK IPi documentation
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Android_logo_2019.svg/1374px-Android_logo_2019.svg.png" width="150" align="right">
+<br>
+
+### Supported Module List
+
+###  
 
 
-### Getting started
-
-
-
-1. Install dependencies:
-
-
-```
-$ git clone https://github.com/ADLINK-EPM/ipi-doc.git
-$ cd ipi-docs
-$ npm install
-$ npm install hexo-cli -g
-
-```
-
-2. Generate HTML website:
-
-```
-$ hexo clean
-$ hexo g
-```
-
-3. Run server on local side:
-
-```
-$ hexo s
-```
-
-## How to add/modify the source of ipi-doc
-
-
-### Basic rules
-
-* your markdown and hexo source must build
-* your image format shoul be .png
-* please use "Camel case" for your folder or file name. 
-  <br>for example,
-      **H**ow**T**o**U**se**I**nstall**U**buntu.md
-* please make sure that website can work at your local side
-
-
-
-### How to work
-
-* the recommended method is to fork on github, and then send pull requests to the main proejct. 
-* we will get the notification to merge your changes and go public your html files
+|                         SMARC Module                         | Description                                                  |
+| :----------------------------------------------------------: | :----------------------------------------------------------- |
+|                                                              | **LEC-iMX8M Plus** ([More details]())  <br />     SMARC Short Size Module with ???<br /> |
+| <img src="https://cdn.adlinktech.com/webupd/products/images/1752/LEC-iMX8M-F_(1)_web.jpg" width="200"/> | **LEC-iMX8M** ([More Details](https://www.adlinktech.com/Products/Computer_on_Modules/SMARC/LEC-iMX8M?lang=en)) <br>     SMARC Short Size Module with NXP i.MX 8M Dual, QuadLite and Quad Processors |
 
 
 
 
 
 
+#### Getting Started
 
+| Modules                   | Android 10 |
+| ------------------------- | ---------- |
+| LEC-iMX8M, LEC-iMX8M Plus |            |
 
+ 
 
