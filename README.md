@@ -1,4 +1,4 @@
-<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Android_logo_2019.svg/1374px-Android_logo_2019.svg.png" width="150" align="right">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Android_logo_2019.svg/1374px-Android_logo_2019.svg.png" width="130" align="right">
 <br>
 
 ### Supported Module List
