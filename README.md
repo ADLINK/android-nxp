@@ -20,7 +20,7 @@
 
 | Modules                   | Android 10 |
 | ------------------------- | ---------- |
-| LEC-iMX8M, LEC-iMX8M Plus |            |
+| LEC-iMX8M, LEC-iMX8M Plus |   imx-android-11.0.0_1.0.0         |
 
  
 
