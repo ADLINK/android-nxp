@@ -14,14 +14,4 @@
 
 
 
-
-
-### Getting Started
-
-| Modules                   | Android 10 |
-| ------------------------- | ---------- |
-| LEC-iMX8M, LEC-iMX8M Plus |   [imx-android-11.0.0_1.0.0 ](https://github.com/ADLINK/android-nxp/blob/imx-android-11.0.0_1.0.0/README.md)        |
-| LEC-iMX6                  |   [p9.0.0_2.0.1_8m-ga]() |
-
  
-
