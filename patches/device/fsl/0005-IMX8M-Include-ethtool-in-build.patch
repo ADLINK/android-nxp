@@ -1,0 +1,29 @@
+From 22dd1c62d88e802f10c3867591982193d149d9dc Mon Sep 17 00:00:00 2001
+From: Arun Kumar <arunkumar.ev@ltts.com>
+Date: Tue, 11 Feb 2020 16:08:53 +0530
+Subject: [PATCH 5/5] IMX8M: Include ethtool in build
+
+Include ethtool in build
+
+Signed-off-by: Arun Kumar <arunkumar.ev@ltts.com>
+---
+ imx8m/evk_8mq/evk_8mq.mk | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/imx8m/evk_8mq/evk_8mq.mk b/imx8m/evk_8mq/evk_8mq.mk
+index d5298b1..72ac089 100644
+--- a/imx8m/evk_8mq/evk_8mq.mk
++++ b/imx8m/evk_8mq/evk_8mq.mk
+@@ -249,6 +249,9 @@ PRODUCT_PACKAGES += \
+ 	i2cget \
+ 	i2cdump
+ 
++PRODUCT_PACKAGES += \
++	ethtool
++
+ # Add oem unlocking option in settings.
+ PRODUCT_PROPERTY_OVERRIDES += ro.frp.pst=/dev/block/by-name/presistdata
+ PRODUCT_COMPATIBLE_PROPERTY_OVERRIDE := true
+-- 
+2.7.4
+

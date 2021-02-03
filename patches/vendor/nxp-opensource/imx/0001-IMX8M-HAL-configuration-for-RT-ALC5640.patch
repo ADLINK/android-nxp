@@ -1,0 +1,195 @@
+From 4fa927d8fd41eb8becfa854d783c788d712ca289 Mon Sep 17 00:00:00 2001
+From: Arun Kumar <arunkumar.ev@ltts.com>
+Date: Fri, 31 Jan 2020 12:51:44 +0530
+Subject: [PATCH] IMX8M: HAL configuration for RT ALC5640
+
+Add HAL configuration for RT ALC5640 audio codec. Only playback
+support is added and audio from android is routed to HDMI speakers
+as audio_policy_configuration.xml is set for speakers.
+
+Currently audio jack can be tested using below commands:
+
+    tinyplay <wav file>
+
+HAL configuration to record audio with alc5640 codec from android
+application. Audio will be recorded using onboard mic.
+
+Audio can also be recorded using tinycap by executing below
+commands:
+        tinymix "ADC Capture Volume" "100"
+        tinymix "RECMIXL BST1 Switch" "1"
+        tinymix "RECMIXR BST1 Switch" "1"
+        tinymix "Stereo ADC MIXL ADC1 Switch" "1"
+        tinymix "Stereo ADC MIXR ADC1 Switch" "1"
+
+        tinycap /data/test.wav -r 48000
+
+Signed-off-by: Arun Kumar E V <arunkumar.ev@ltts.com>
+
+diff --git a/alsa/config_rt5640.h b/alsa/config_rt5640.h
+new file mode 100644
+index 0000000..722eca6
+--- /dev/null
++++ b/alsa/config_rt5640.h
+@@ -0,0 +1,108 @@
++/*
++ * Copyright (C) 2018 The Android Open Source Project
++ * Copyright 2018 NXP
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef ANDROID_INCLUDE_IMX_CONFIG_RT5640_H
++#define ANDROID_INCLUDE_IMX_CONFIG_RT5640_H
++
++#include "audio_hardware.h"
++
++#define MIXER_RT5640_DAC1_VOL "DAC1 Playback Volume"
++#define MIXER_RT5640_HP_R_PLAYBACK "HP R Playback Switch"
++#define MIXER_RT5640_HP_L_PLAYBACK "HP L Playback Switch"
++#define MIXER_RT5640_STEREO_DAC_MIXL_DAC_L1 "Stereo DAC MIXL DAC L1 Switch"
++#define MIXER_RT5640_STEREO_DAC_MIXR_DAC_R1 "Stereo DAC MIXR DAC R1 Switch"
++
++#define MIXER_RT5640_HPO_MIX_DAC1_SWITCH "HPO MIX DAC1 Switch"
++
++#define MIXER_RT5640_ADC_CAPTURE_VOL "ADC Capture Volume"
++#define MIXER_RT5640_RECMIXL_BST1 "RECMIXL BST1 Switch"
++#define MIXER_RT5640_RECMIXR_BST1 "RECMIXR BST1 Switch"
++#define MIXER_RT5640_STEREO_ADC_MIXL "Stereo ADC MIXL ADC1 Switch"
++#define MIXER_RT5640_STEREO_ADC_MIXR "Stereo ADC MIXR ADC1 Switch"
++
++
++static struct route_setting speaker_output_rt5640[] = {
++    {
++        .ctl_name = MIXER_RT5640_DAC1_VOL, .intval = 125,
++    },
++    {
++        .ctl_name = MIXER_RT5640_STEREO_DAC_MIXL_DAC_L1, .intval = 1,
++    },
++    {
++        .ctl_name = MIXER_RT5640_STEREO_DAC_MIXR_DAC_R1, .intval = 1,
++    },
++    {
++        .ctl_name = MIXER_RT5640_HP_R_PLAYBACK, .intval = 1,
++    },
++    {
++        .ctl_name = MIXER_RT5640_HP_L_PLAYBACK, .intval = 1,
++    },
++    {
++        .ctl_name = MIXER_RT5640_HPO_MIX_DAC1_SWITCH, .intval = 1,
++    },
++    {
++        .ctl_name = NULL,
++    },
++};
++
++
++static struct route_setting main_mic_input_rt5640[] = {
++    {
++        .ctl_name = MIXER_RT5640_ADC_CAPTURE_VOL, .intval = 100,
++    },
++    {
++        .ctl_name = MIXER_RT5640_RECMIXL_BST1, .intval = 1,
++    },
++    {
++        .ctl_name = MIXER_RT5640_RECMIXR_BST1, .intval = 1,
++    },
++    {
++        .ctl_name = MIXER_RT5640_STEREO_ADC_MIXL, .intval = 1,
++    },
++    {
++        .ctl_name = MIXER_RT5640_STEREO_ADC_MIXR, .intval = 1,
++    },
++};
++
++/* ALSA cards for IMX, these must be defined according different board / kernel
++ * config*/
++static struct audio_card rt5640_card = {
++    .name = "rt5640-audio",
++    .driver_name = "rt5640-audio",
++    .supported_out_devices = AUDIO_DEVICE_OUT_WIRED_HEADPHONE,
++    .supported_in_devices = AUDIO_DEVICE_IN_BUILTIN_MIC,
++    .defaults = NULL,
++    .bt_output = NULL,
++    .speaker_output = speaker_output_rt5640,
++    .hs_output = NULL,
++    .earpiece_output = NULL,
++    .vx_hs_mic_input = NULL,
++    .mm_main_mic_input = main_mic_input_rt5640,
++    .vx_main_mic_input = NULL,
++    .mm_hs_mic_input = NULL,
++    .vx_bt_mic_input = NULL,
++    .mm_bt_mic_input = NULL,
++    .card = 0,
++    .out_rate = 0,
++    .out_channels = 0,
++    .out_format = 0,
++    .in_rate = 0,
++    .in_channels = 0,
++    .in_format = 0,
++};
++
++#endif
+diff --git a/alsa/tinyalsa_hal.c b/alsa/tinyalsa_hal.c
+index 210a780..a0498a0 100755
+--- a/alsa/tinyalsa_hal.c
++++ b/alsa/tinyalsa_hal.c
+@@ -18,6 +18,9 @@
+ 
+ #define LOG_TAG "audio_hw_primary"
+ //#define LOG_NDEBUG 0
++#define LOG_NDEBUG 0
++#define LOG_NIDEBUG 0
++#define LOG_NDDEBUG 0
+ 
+ #include <errno.h>
+ #include <pthread.h>
+@@ -69,6 +72,7 @@
+ #include "config_xtor_pico.h"
+ #include "config_rt5645.h"
+ #include "config_micfil.h"
++#include "config_rt5640.h"
+ 
+ /* ALSA ports for IMX */
+ #define PORT_MM     0
+@@ -128,7 +132,7 @@
+ #define PRODUCT_NAME_PROPERTY   "ro.product.name"
+ #define PRODUCT_DEVICE_IMX      "imx"
+ #define PRODUCT_DEVICE_AUTO     "sabreauto"
+-#define SUPPORT_CARD_NUM        19
++#define SUPPORT_CARD_NUM        20
+ 
+ #define IMX8_BOARD_NAME "imx8"
+ #define IMX7_BOARD_NAME "imx7"
+@@ -159,6 +163,7 @@ struct audio_card *audio_card_list[SUPPORT_CARD_NUM] = {
+     &xtor_pico_card,
+     &rt5645_card,
+     &micfil_card,
++    &rt5640_card,
+     &null_card,
+ };
+ 
+@@ -4299,8 +4304,10 @@ static int scan_available_device(struct imx_audio_device *adev, bool queryInput,
+                 adev->card_list[n]  = audio_card_list[j];
+                 adev->card_list[n]->card = i;
+                 adev->mixer[n] = mixer_open(i);
++
+                 if (!adev->mixer[n]) {
+                      ALOGE("Unable to open the mixer, aborting.");
++
+                      control_close(imx_control);
+                      return -EINVAL;
+                 }
+-- 
+2.7.4
+

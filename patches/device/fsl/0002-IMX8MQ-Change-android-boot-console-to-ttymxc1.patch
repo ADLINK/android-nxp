@@ -1,0 +1,29 @@
+From 55c982466b5d87c19ac414175c11b21b474475f6 Mon Sep 17 00:00:00 2001
+From: Arun Kumar <arunkumar.ev@ltts.com>
+Date: Fri, 10 Jan 2020 12:06:20 +0530
+Subject: [PATCH 2/5] IMX8MQ: Change android boot console to ttymxc1
+
+Change androidboot.console to ttymxc1 in kernel command
+line
+
+Signed-off-by: Arun Kumar <arunkumar.ev@ltts.com>
+---
+ imx8m/evk_8mq/BoardConfig.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/imx8m/evk_8mq/BoardConfig.mk b/imx8m/evk_8mq/BoardConfig.mk
+index 5c7a90b..e13bd11 100644
+--- a/imx8m/evk_8mq/BoardConfig.mk
++++ b/imx8m/evk_8mq/BoardConfig.mk
+@@ -135,7 +135,7 @@ CMASIZE=1280M
+ endif
+ 
+ KERNEL_NAME := Image
+-BOARD_KERNEL_CMDLINE := init=/init androidboot.gui_resolution=1080p androidboot.console=ttymxc0 androidboot.hardware=freescale androidboot.fbTileSupport=enable cma=$(CMASIZE) androidboot.primary_display=imx-drm firmware_class.path=/vendor/firmware transparent_hugepage=never
++BOARD_KERNEL_CMDLINE := init=/init androidboot.gui_resolution=1080p androidboot.console=ttymxc1 androidboot.hardware=freescale androidboot.fbTileSupport=enable cma=$(CMASIZE) androidboot.primary_display=imx-drm firmware_class.path=/vendor/firmware transparent_hugepage=never
+ 
+ # Default wificountrycode
+ BOARD_KERNEL_CMDLINE += androidboot.wificountrycode=CN
+-- 
+2.7.4
+

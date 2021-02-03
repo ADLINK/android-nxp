@@ -1,0 +1,617 @@
+From 189b8f8c8ec542e3be08eaf7fd8b752f84dd73d2 Mon Sep 17 00:00:00 2001
+From: Arun Kumar <arunkumar.ev@ltts.com>
+Date: Fri, 31 Jan 2020 12:45:41 +0530
+Subject: [PATCH 10/13] IMX8M: Add support for RT ALC5640 audio codec
+
+ * Add device tree configuration for ALC5640 codec
+ * Add machine driver to attach codec DAI to SOC DAI
+ * Add supported PCM sampling rate list in codec driver and
+   add a startup function to register the rate list.
+ * Mixer commands required for playback on audio jack
+    tinymix "HP R Playback Switch" "1"
+    tinymix "HP L Playback Switch" "1"
+    tinymix "Stereo DAC MIXL DAC L1 Switch" "1"
+    tinymix "Stereo DAC MIXR DAC R1 Switch" "1"
+    tinymix "HPO MIX DAC1 Switch" "1"
+ * Mixer commands required for recording via onboard mic
+    tinymix "ADC Capture Volume" "100"
+    tinymix "RECMIXL BST1 Switch" "1"
+    tinymix "RECMIXR BST1 Switch" "1"
+    tinymix "Stereo ADC MIXL ADC1 Switch" "1"
+    tinymix "Stereo ADC MIXR ADC1 Switch" "1"
+
+Signed-off-by: Arun Kumar <arunkumar.ev@ltts.com>
+---
+ arch/arm64/boot/dts/adlink/adlink-lec-imx8m.dts | 147 +++------------
+ arch/arm64/configs/android_defconfig            |   2 +
+ sound/soc/codecs/rt5640.c                       |  34 +++-
+ sound/soc/fsl/Kconfig                           |   8 +
+ sound/soc/fsl/Makefile                          |   2 +
+ sound/soc/fsl/imx8-rt5640.c                     | 235 ++++++++++++++++++++++++
+ 6 files changed, 299 insertions(+), 129 deletions(-)
+ create mode 100644 sound/soc/fsl/imx8-rt5640.c
+
+diff --git a/arch/arm64/boot/dts/adlink/adlink-lec-imx8m.dts b/arch/arm64/boot/dts/adlink/adlink-lec-imx8m.dts
+index f04b261..e7e21cc 100644
+--- a/arch/arm64/boot/dts/adlink/adlink-lec-imx8m.dts
++++ b/arch/arm64/boot/dts/adlink/adlink-lec-imx8m.dts
+@@ -110,21 +110,17 @@
+ 		pinctrl-2 = <&pinctrl_wlan>;
+ 	};
+ 
+-	wm8524: wm8524 {
+-		compatible = "wlf,wm8524";
+-		clocks = <&clk IMX8MQ_CLK_SAI2_ROOT>;
+-		clock-names = "mclk";
+-		wlf,mute-gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
+-	};
+-
+-	sound-wm8524 {
+-		compatible = "fsl,imx-audio-wm8524";
+-		model = "wm8524-audio";
++	sound-rt5640 {
++		compatible = "fsl,imx8-audio-rt5640";
++		model = "rt5640-audio";
+ 		audio-cpu = <&sai2>;
+-		audio-codec = <&wm8524>;
++		audio-codec = <&rt5640>;
+ 		audio-routing =
+-			"Line Out Jack", "LINEVOUTL",
+-			"Line Out Jack", "LINEVOUTR";
++			"Headphone", "HPOL",
++			"Headphone", "HPOR",
++			"Microphone", "MICBIAS1",
++			"Microphone", "IN1P",
++			"IN1P", "MICBIAS1";
+ 	};
+ 
+ 	sound-hdmi {
+@@ -142,44 +138,6 @@
+ 				<96000>,
+ 				<192000>;
+ 	};
+-
+-	sound-spdif {
+-		compatible = "fsl,imx-audio-spdif";
+-		model = "imx-spdif";
+-		spdif-controller = <&spdif1>;
+-		spdif-out;
+-		spdif-in;
+-	};
+-
+-	sound-hdmi-arc {
+-		compatible = "fsl,imx-audio-spdif";
+-		model = "imx-hdmi-arc";
+-		spdif-controller = <&spdif2>;
+-		spdif-in;
+-	};
+-
+-	sound-ak4458 {
+-		compatible = "fsl,imx-audio-ak4458-mq";
+-		model = "ak4458-audio";
+-		audio-cpu = <&sai1>;
+-		audio-codec = <&ak4458_1>, <&ak4458_2>;
+-		ak4458,pdn-gpio = <&gpio3 18 GPIO_ACTIVE_HIGH>;
+-	};
+-
+-	sound-ak5558 {
+-		compatible = "fsl,imx-audio-ak5558-mq";
+-		model = "ak5558-audio";
+-		audio-cpu = <&sai5>;
+-		audio-codec = <&ak5558>;
+-	};
+-
+-	sound-ak4497 {
+-		compatible = "fsl,imx-audio-ak4497-mq";
+-		model = "ak4497-audio";
+-		audio-cpu = <&sai1>;
+-		audio-codec = <&ak4497>;
+-		status = "disabled";
+-	};
+ };
+ 
+ &clk {
+@@ -253,8 +211,8 @@
+ 
+ 		pinctrl_i2c2: i2c2grp {
+ 			fsl,pins = <
+-				MX8MQ_IOMUXC_I2C2_SCL_I2C2_SCL			0x4000007f
+-				MX8MQ_IOMUXC_I2C2_SDA_I2C2_SDA			0x4000007f
++				MX8MQ_IOMUXC_I2C2_SCL_I2C2_SCL			0x40000067
++				MX8MQ_IOMUXC_I2C2_SDA_I2C2_SDA			0x40000067
+ 			>;
+ 		};
+ 
+@@ -427,7 +385,7 @@
+ 				MX8MQ_IOMUXC_SAI2_TXC_SAI2_TX_BCLK	0xd6
+ 				MX8MQ_IOMUXC_SAI2_MCLK_SAI2_MCLK	0xd6
+ 				MX8MQ_IOMUXC_SAI2_TXD0_SAI2_TX_DATA0	0xd6
+-				MX8MQ_IOMUXC_GPIO1_IO08_GPIO1_IO8	0xd6
++				MX8MQ_IOMUXC_SAI2_RXD0_SAI2_RX_DATA0    0xd6
+ 			>;
+ 		};
+ 
+@@ -440,25 +398,6 @@
+ 			>;
+ 		};
+ 
+-		pinctrl_sai5: sai5grp {
+-			fsl,pins = <
+-				MX8MQ_IOMUXC_SAI5_MCLK_SAI5_MCLK	0xd6
+-				MX8MQ_IOMUXC_SAI5_RXC_SAI5_RX_BCLK	0xd6
+-				MX8MQ_IOMUXC_SAI5_RXFS_SAI5_RX_SYNC	0xd6
+-				MX8MQ_IOMUXC_SAI5_RXD0_SAI5_RX_DATA0	0xd6
+-				MX8MQ_IOMUXC_SAI5_RXD1_SAI5_RX_DATA1    0xd6
+-				MX8MQ_IOMUXC_SAI5_RXD2_SAI5_RX_DATA2    0xd6
+-				MX8MQ_IOMUXC_SAI5_RXD3_SAI5_RX_DATA3    0xd6
+-			>;
+-		};
+-
+-		pinctrl_spdif1: spdif1grp {
+-			fsl,pins = <
+-				MX8MQ_IOMUXC_SPDIF_TX_SPDIF1_OUT	0xd6
+-				MX8MQ_IOMUXC_SPDIF_RX_SPDIF1_IN		0xd6
+-			>;
+-		};
+-
+ 		pinctrl_wdog: wdoggrp {
+ 			fsl,pins = <
+ 				MX8MQ_IOMUXC_GPIO1_IO02_WDOG1_WDOG_B 0xc6
+@@ -655,28 +594,6 @@
+ 	pinctrl-0 = <&pinctrl_i2c3>;
+ 	status = "okay";
+ 
+-	ak4458_1: ak4458@10 {
+-		compatible = "asahi-kasei,ak4458";
+-		reg = <0x10>;
+-	};
+-
+-	ak4458_2: ak4458@12 {
+-		compatible = "asahi-kasei,ak4458";
+-		reg = <0x12>;
+-	};
+-
+-	ak5558: ak5558@13 {
+-		compatible = "asahi-kasei,ak5558";
+-		reg = <0x13>;
+-		ak5558,pdn-gpio = <&gpio3 17 GPIO_ACTIVE_HIGH>;
+-	};
+-
+-	ak4497: ak4497@11 {
+-		compatible = "asahi-kasei,ak4497";
+-		reg = <0x11>;
+-		ak4497,pdn-gpio = <&gpio3 16 GPIO_ACTIVE_HIGH>;
+-	};
+-
+         pcal6416a: pcal6416a@20 {
+                 compatible = "nxp,pca9535";
+                 reg = <0x20>;
+@@ -692,6 +609,15 @@
+                 direction_port1_init = <0x0f>;
+         };
+ 
++	rt5640: rt5640@1c {
++		//#sound-dai-cells = <0>;
++		compatible = "realtek,rt5640";
++		model = "rt5640-audio";
++		reg = <0x1c>;
++		clocks = <&clk IMX8MQ_CLK_SAI2_ROOT>;
++		clock-names = "mclk";
++		realtek,in1-differential;
++	};
+ };
+ 
+ &pcie0{
+@@ -823,37 +749,6 @@
+ 	status = "okay";
+ };
+ 
+-&sai5 {
+-	pinctrl-names = "default";
+-	pinctrl-0 = <&pinctrl_sai5>;
+-	assigned-clocks = <&clk IMX8MQ_CLK_SAI5>;
+-	assigned-clock-parents = <&clk IMX8MQ_AUDIO_PLL1_OUT>;
+-	assigned-clock-rates = <49152000>;
+-	clocks = <&clk IMX8MQ_CLK_SAI5_IPG>, <&clk IMX8MQ_CLK_DUMMY>,
+-		<&clk IMX8MQ_CLK_SAI5_ROOT>, <&clk IMX8MQ_CLK_DUMMY>,
+-		<&clk IMX8MQ_CLK_DUMMY>, <&clk IMX8MQ_AUDIO_PLL1_OUT>,
+-		<&clk IMX8MQ_AUDIO_PLL2_OUT>;
+-	clock-names = "bus", "mclk0", "mclk1", "mclk2", "mclk3", "pll8k", "pll11k";
+-	fsl,sai-asynchronous;
+-	status = "okay";
+-};
+-
+-&spdif1 {
+-	pinctrl-names = "default";
+-	pinctrl-0 = <&pinctrl_spdif1>;
+-	assigned-clocks = <&clk IMX8MQ_CLK_SPDIF1>;
+-	assigned-clock-parents = <&clk IMX8MQ_AUDIO_PLL1_OUT>;
+-	assigned-clock-rates = <24576000>;
+-	status = "okay";
+-};
+-
+-&spdif2 {
+-	assigned-clocks = <&clk IMX8MQ_CLK_SPDIF2>;
+-	assigned-clock-parents = <&clk IMX8MQ_AUDIO_PLL1_OUT>;
+-	assigned-clock-rates = <24576000>;
+-	status = "okay";
+-};
+-
+ &gpu_pd {
+ 	power-supply = <&sw1a_reg>;
+ };
+diff --git a/arch/arm64/configs/android_defconfig b/arch/arm64/configs/android_defconfig
+index f2125bb..29a4298 100644
+--- a/arch/arm64/configs/android_defconfig
++++ b/arch/arm64/configs/android_defconfig
+@@ -677,6 +677,8 @@ CONFIG_SND_SOC_IMX_DSP=y
+ CONFIG_SND_SOC_SAMSUNG=y
+ CONFIG_SND_SOC_RCAR=y
+ CONFIG_SND_SOC_AK4613=y
++CONFIG_SND_SOC_RT5640=y
++CONFIG_SND_SOC_IMX8_RT5640=y
+ CONFIG_SND_SIMPLE_CARD=y
+ CONFIG_HIDRAW=y
+ CONFIG_UHID=y
+diff --git a/sound/soc/codecs/rt5640.c b/sound/soc/codecs/rt5640.c
+index 438fe52..eea82e5 100644
+--- a/sound/soc/codecs/rt5640.c
++++ b/sound/soc/codecs/rt5640.c
+@@ -35,12 +35,16 @@
+ #include "rt5640.h"
+ 
+ #define RT5640_DEVICE_ID 0x6231
++#define RT5640_DEVICE_ID1 0x10EC
+ 
+ #define RT5640_PR_RANGE_BASE (0xff + 1)
+ #define RT5640_PR_SPACING 0x100
+ 
+ #define RT5640_PR_BASE (RT5640_PR_RANGE_BASE + (0 * RT5640_PR_SPACING))
+ 
++unsigned int alc5640_rate_list[5] = {8000, 16000, 32000, 48000, 64000, 96000};
++struct snd_pcm_hw_constraint_list alc5640_rate_constraint;
++
+ static const struct regmap_range_cfg rt5640_ranges[] = {
+ 	{ .name = "PR", .range_min = RT5640_PR_BASE,
+ 	  .range_max = RT5640_PR_BASE + 0xb4,
+@@ -2211,7 +2215,23 @@ static int rt5640_resume(struct snd_soc_codec *codec)
+ #define RT5640_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE | \
+ 			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S8)
+ 
++static int rt5640_startup(struct snd_pcm_substream *substream,
++			  struct snd_soc_dai *dai)
++{
++	struct snd_soc_codec *codec = dai->codec;
++
++	alc5640_rate_constraint.list = &alc5640_rate_list[0];
++	alc5640_rate_constraint.count = ARRAY_SIZE(alc5640_rate_list);
++
++	snd_pcm_hw_constraint_list(substream->runtime, 0,
++				   SNDRV_PCM_HW_PARAM_RATE,
++				   &alc5640_rate_constraint);
++
++	return 0;
++}
++
+ static const struct snd_soc_dai_ops rt5640_aif_dai_ops = {
++	.startup = rt5640_startup,
+ 	.hw_params = rt5640_hw_params,
+ 	.set_fmt = rt5640_set_dai_fmt,
+ 	.set_sysclk = rt5640_set_dai_sysclk,
+@@ -2384,7 +2404,7 @@ static int rt5640_i2c_probe(struct i2c_client *i2c,
+ 		return ret;
+ 	}
+ 
+-	if (gpio_is_valid(rt5640->pdata.ldo1_en)) {
++	/*if (gpio_is_valid(rt5640->pdata.ldo1_en)) {
+ 		ret = devm_gpio_request_one(&i2c->dev, rt5640->pdata.ldo1_en,
+ 					    GPIOF_OUT_INIT_HIGH,
+ 					    "RT5640 LDO1_EN");
+@@ -2394,14 +2414,22 @@ static int rt5640_i2c_probe(struct i2c_client *i2c,
+ 			return ret;
+ 		}
+ 		msleep(400);
++	}*/
++
++	regmap_read(rt5640->regmap, RT5640_VENDOR_ID1, &val);
++	printk(KERN_INFO "rt5640_id: %x\n", val);
++	if (val != RT5640_DEVICE_ID1) {
++		dev_err(&i2c->dev,
++			"Device with ID register %#x is not rt5640/39\n", val);
++		return -ENODEV;
+ 	}
+ 
+-	regmap_read(rt5640->regmap, RT5640_VENDOR_ID2, &val);
++	/*regmap_read(rt5640->regmap, RT5640_VENDOR_ID2, &val);
+ 	if (val != RT5640_DEVICE_ID) {
+ 		dev_err(&i2c->dev,
+ 			"Device with ID register %#x is not rt5640/39\n", val);
+ 		return -ENODEV;
+-	}
++	}*/
+ 
+ 	regmap_write(rt5640->regmap, RT5640_RESET, 0);
+ 
+diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
+index 418e3e2..c0feebd 100644
+--- a/sound/soc/fsl/Kconfig
++++ b/sound/soc/fsl/Kconfig
+@@ -465,6 +465,14 @@ config SND_SOC_IMX_SGTL5000
+ 	  Say Y if you want to add support for SoC audio on an i.MX board with
+ 	  a sgtl5000 codec.
+ 
++config SND_SOC_IMX8_RT5640
++        tristate "SoC Audio support for i.MX8 boards with sgtl5000"
++        depends on OF && I2C
++        select SND_SOC_FSL_SAI
++        select SND_SOC_RT5640
++        help
++          Say Y if you want to add support for ASOC on iMX8+SGTL5000.
++
+ config SND_SOC_IMX_MQS
+ 	tristate "SoC Audio support for i.MX boards with MQS"
+ 	depends on OF
+diff --git a/sound/soc/fsl/Makefile b/sound/soc/fsl/Makefile
+index 0b23c8e..69b7216 100644
+--- a/sound/soc/fsl/Makefile
++++ b/sound/soc/fsl/Makefile
+@@ -74,6 +74,7 @@ snd-soc-wm1133-ev1-objs := wm1133-ev1.o
+ snd-soc-imx-es8328-objs := imx-es8328.o
+ snd-soc-imx-cs42888-objs := imx-cs42888.o
+ snd-soc-imx-sgtl5000-objs := imx-sgtl5000.o
++snd-soc-imx8-rt5640-objs := imx8-rt5640.o
+ snd-soc-imx-wm8958-objs := imx-wm8958.o
+ snd-soc-imx-wm8960-objs := imx-wm8960.o
+ snd-soc-imx-wm8524-objs := imx-wm8524.o
+@@ -102,6 +103,7 @@ obj-$(CONFIG_SND_MXC_SOC_WM1133_EV1) += snd-soc-wm1133-ev1.o
+ obj-$(CONFIG_SND_SOC_IMX_ES8328) += snd-soc-imx-es8328.o
+ obj-$(CONFIG_SND_SOC_IMX_CS42888) += snd-soc-imx-cs42888.o
+ obj-$(CONFIG_SND_SOC_IMX_SGTL5000) += snd-soc-imx-sgtl5000.o
++obj-$(CONFIG_SND_SOC_IMX8_RT5640) += snd-soc-imx8-rt5640.o
+ obj-${CONFIG_SND_SOC_IMX_WM8958} += snd-soc-imx-wm8958.o
+ obj-$(CONFIG_SND_SOC_IMX_WM8960) += snd-soc-imx-wm8960.o
+ obj-$(CONFIG_SND_SOC_IMX_WM8524) += snd-soc-imx-wm8524.o
+diff --git a/sound/soc/fsl/imx8-rt5640.c b/sound/soc/fsl/imx8-rt5640.c
+new file mode 100644
+index 00000000..47764a0
+--- /dev/null
++++ b/sound/soc/fsl/imx8-rt5640.c
+@@ -0,0 +1,235 @@
++/*
++ * Copyright 2012 Freescale Semiconductor, Inc.
++ * Copyright 2012 Linaro Ltd.
++ *
++ * The code contained herein is licensed under the GNU General Public
++ * License. You may obtain a copy of the GNU General Public License
++ * Version 2 or later at the following locations:
++ *
++ * http://www.opensource.org/licenses/gpl-license.html
++ * http://www.gnu.org/copyleft/gpl.html
++ */
++
++#define ADLINK_DEBUG//ky_add;
++#include <linux/err.h>
++
++#include <linux/module.h>
++#include <linux/of.h>
++#include <linux/of_platform.h>
++#include <linux/i2c.h>
++#include <linux/clk.h>
++#include <sound/soc.h>
++
++#include "../codecs/rt5640.h"
++
++struct rt_alc5640_data {
++	struct platform_device *pdev;
++	struct snd_soc_dai_link dai;
++	struct snd_soc_card card;
++	struct clk *codec_mclk;
++	unsigned long mclk_frequency;
++};
++
++static int rt_alc5640_hifi_hw_params(struct snd_pcm_substream *substream,
++				     struct snd_pcm_hw_params *params)
++{
++	struct snd_soc_pcm_runtime *rtd = substream->private_data;
++	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
++	struct snd_soc_card *card = rtd->card;
++	struct device *dev = card->dev;
++	unsigned int fmt;
++	int ret = 0;
++
++	fmt = SND_SOC_DAIFMT_I2S |
++			SND_SOC_DAIFMT_NB_NF |
++			SND_SOC_DAIFMT_CBS_CFS;
++
++	ret = snd_soc_dai_set_fmt(cpu_dai, fmt);
++	if (ret) {
++		dev_err(dev, "failed to set cpu dai fmt: %d\n", ret);
++		return ret;
++	}
++
++	return ret;
++}
++
++static int rt_alc5640_late_probe(struct snd_soc_card *card)
++{
++	struct snd_soc_pcm_runtime *rtd = list_first_entry(
++		&card->rtd_list, struct snd_soc_pcm_runtime, list);
++	struct snd_soc_dai *codec_dai = rtd->codec_dai;
++	struct rt_alc5640_data *priv = snd_soc_card_get_drvdata(card);
++	int ret;
++
++	ret = snd_soc_dai_set_sysclk(codec_dai, 0, priv->mclk_frequency,
++							SND_SOC_CLOCK_IN);
++
++	return 0;
++}
++
++/*static int rt_alc5640_dai_init (struct snd_soc_pcm_runtime *rtd)
++{
++	struct rt_alc5640_data *data = snd_soc_card_get_drvdata(rtd->card);
++	struct device *dev = rtd->card->dev;
++	int ret;
++
++	ret = snd_soc_dai_set_sysclk(rtd->codec_dai, RT5640_SCLK_S_MCLK, data->mclk_frequency, SND_SOC_CLOCK_IN);
++	if (ret) {
++		dev_err(dev, "could not set codec driver clock params\n");
++		return ret;
++	}
++
++	return 0;
++}*/
++
++static const struct snd_soc_dapm_widget rt_alc5640_dapm_widgets[] = {
++	SND_SOC_DAPM_HP("Headphone", NULL),
++	SND_SOC_DAPM_MIC("Microphone", NULL),
++};
++
++static struct snd_soc_ops rt_alc5640_hifi_ops = {
++	.hw_params = rt_alc5640_hifi_hw_params,
++};
++
++static int rt_alc5640_soc_probe (struct platform_device *pdev)
++{
++	struct device_node *np_pdev = pdev->dev.of_node;
++	struct device_node *np_AudioCpu, *np_AudioCodec;
++	struct platform_device *pdev_cpu;
++	struct i2c_client *i2client_codec;
++	struct rt_alc5640_data *data = NULL;
++	int ret;
++
++	np_AudioCpu = of_parse_phandle(np_pdev, "audio-cpu", 0);
++	np_AudioCodec = of_parse_phandle(np_pdev, "audio-codec", 0);
++	if (!np_AudioCpu || !np_AudioCodec) {
++		dev_err(&pdev->dev, "phandle missing or invalid\n");
++		ret = -EINVAL;
++		goto fail;
++	}
++
++	pdev_cpu = of_find_device_by_node(np_AudioCpu);
++	if (!pdev_cpu) {
++		dev_err(&pdev->dev, "failed to find SAI platform device\n");
++		ret = -EPROBE_DEFER;
++		goto fail;
++	}
++
++	i2client_codec = of_find_i2c_device_by_node(np_AudioCodec);
++	if (!i2client_codec) {
++		dev_err(&pdev->dev, "failed to find codec platform device\n");
++		ret = -EPROBE_DEFER;
++		goto fail;
++	}
++
++	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
++	if(!data) {
++		dev_err(&pdev->dev, "No memory??\n");
++		ret = -ENOMEM;
++		goto fail;
++	}
++	data->pdev=pdev;
++
++	data->codec_mclk = clk_get(&i2client_codec->dev, "mclk");
++	if (IS_ERR(data->codec_mclk)) {
++		ret = PTR_ERR(data->codec_mclk);
++		dev_err(&pdev->dev, "failed to get codec clk: %d\n", ret);
++		goto fail;
++	}
++
++	data->mclk_frequency = clk_get_rate(data->codec_mclk);
++	dev_info(&pdev->dev,"mclk_frequency=%lu\n",data->mclk_frequency);
++
++	/* CPU <--> Codec DAI links  */
++	data->dai.name 				= "HiFi";
++	data->dai.stream_name 		= "HiFi";
++	data->dai.codec_dai_name 	= "rt5640-aif1"; Link2(rt5640_dai);
++	data->dai.codec_of_node 	= np_AudioCodec;
++	data->dai.cpu_of_node 		= np_AudioCpu;
++	data->dai.platform_of_node	= np_AudioCpu;
++	/*data->dai.init 				= &rt_alc5640_dai_init;
++	data->dai.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM;*/
++	data->dai.ops = &rt_alc5640_hifi_ops;
++	data->card.dai_link = &data->dai;
++	data->card.num_links = 1;
++	data->card.dev = &pdev->dev;
++	data->card.owner = THIS_MODULE;
++	data->card.dapm_widgets = rt_alc5640_dapm_widgets;
++	data->card.num_dapm_widgets = ARRAY_SIZE(rt_alc5640_dapm_widgets);
++	data->card.late_probe = rt_alc5640_late_probe;
++
++	ret = snd_soc_of_parse_card_name(&data->card, "model");
++	if (ret)
++		goto fail;
++
++	ret = snd_soc_of_parse_audio_routing(&data->card, "audio-routing");
++	if (ret)
++		goto fail;
++
++	platform_set_drvdata(pdev, &data->card);
++	snd_soc_card_set_drvdata(&data->card, data);
++
++	ret = devm_snd_soc_register_card(&pdev->dev, &data->card);
++	if(ret) {
++		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n", ret);
++		goto fail;
++	}
++
++	of_node_put(np_AudioCpu);
++	of_node_put(np_AudioCodec);
++
++	dev_info(&pdev->dev,"%s(%s) done!\n",__func__,dev_name(&pdev->dev));
++
++	return 0;
++
++fail:
++	if(data) {
++		if(!IS_ERR(data->codec_mclk))
++			clk_put(data->codec_mclk);
++		devm_kfree(&pdev->dev,data);
++	}
++
++	of_node_put(np_AudioCpu);
++	of_node_put(np_AudioCodec);
++
++	return ret;
++}
++
++static int rt_alc5640_soc_remove (struct platform_device *pdev)
++{
++	struct snd_soc_card *card = platform_get_drvdata(pdev);
++	struct rt_alc5640_data *data = snd_soc_card_get_drvdata(card);
++
++	clk_put(data->codec_mclk);
++
++	return 0;
++}
++
++static const struct of_device_id rt_alc5640_dt_ids[] = {
++	{ .compatible = "fsl,imx8-audio-rt5640", },
++	{ /* sentinel */ }
++};
++MODULE_DEVICE_TABLE(of, rt_alc5640_dt_ids);
++
++static const struct platform_device_id rt_alc5640_platform_ids[] = {
++	{ "imx8-sai-rt5640", 0 },
++	{ }
++};
++MODULE_DEVICE_TABLE(platform, rt_alc5640_platform_ids);
++
++static struct platform_driver rt_alc5640_soc_driver = {
++	.driver = {
++		.name = "imx8-rt5640",
++		.pm = &snd_soc_pm_ops,
++		.of_match_table = rt_alc5640_dt_ids,
++	},
++	.probe = rt_alc5640_soc_probe,
++	.remove = rt_alc5640_soc_remove,
++	.id_table = rt_alc5640_platform_ids,
++};
++module_platform_driver(rt_alc5640_soc_driver);
++
++MODULE_DESCRIPTION("RT ALC5640 ASoC machine driver");
++MODULE_LICENSE("GPL v2");
++MODULE_ALIAS("platform:imx8-rt5640");
++
+-- 
+2.7.4
+

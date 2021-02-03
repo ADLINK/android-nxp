@@ -1,0 +1,31 @@
+From 7075a48e13b2591dc13e35f7e5065fd0c63f573b Mon Sep 17 00:00:00 2001
+From: Arun Kumar <arunkumar.ev@ltts.com>
+Date: Wed, 5 Feb 2020 12:11:31 +0530
+Subject: [PATCH 4/5] IMX8M: Add Wired Headset as default audio device
+
+Adding "Wireless Headset" as default audio device. Currently any
+audio file played from android UI is routed to HDMI speakers. To route
+audio to jack via codec add "Wireless Headset" under
+<attachedDevices></attachedDevices> and remove "Speakers"
+
+Signed-off-by: Arun Kumar <arunkumar.ev@ltts.com>
+---
+ imx8m/evk_8mq/audio_policy_configuration.xml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/imx8m/evk_8mq/audio_policy_configuration.xml b/imx8m/evk_8mq/audio_policy_configuration.xml
+index 4ca7e32..22cf320 100644
+--- a/imx8m/evk_8mq/audio_policy_configuration.xml
++++ b/imx8m/evk_8mq/audio_policy_configuration.xml
+@@ -23,7 +23,7 @@
+                 <item>Speaker</item>
+                 <item>Built-In Mic</item>
+             </attachedDevices>
+-            <defaultOutputDevice>Speaker</defaultOutputDevice>
++            <defaultOutputDevice>Wired Headphones</defaultOutputDevice>
+             <mixPorts>
+                 <mixPort name="primary output" role="source" flags="AUDIO_OUTPUT_FLAG_PRIMARY">
+                     <profile name="" format="AUDIO_FORMAT_PCM_16_BIT"
+-- 
+2.7.4
+

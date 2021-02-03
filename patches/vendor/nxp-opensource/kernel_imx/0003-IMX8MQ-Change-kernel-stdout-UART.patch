@@ -1,0 +1,31 @@
+From b8a81526322dd2add1ab118a8bea251166c1f13f Mon Sep 17 00:00:00 2001
+From: Arun Kumar <arunkumar.ev@ltts.com>
+Date: Thu, 9 Jan 2020 12:15:21 +0530
+Subject: [PATCH 03/13] IMX8MQ: Change kernel stdout UART
+
+For iPI SMARC, only UART2 available which will be used for console.
+At present uboot settings for uart2 will take precedence
+
+Signed-off-by: Arun Kumar <arunkumar.ev@ltts.com>
+---
+ arch/arm64/boot/dts/adlink/adlink-lec-imx8m.dts | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/adlink/adlink-lec-imx8m.dts b/arch/arm64/boot/dts/adlink/adlink-lec-imx8m.dts
+index 7ecad0e..e5c3630 100644
+--- a/arch/arm64/boot/dts/adlink/adlink-lec-imx8m.dts
++++ b/arch/arm64/boot/dts/adlink/adlink-lec-imx8m.dts
+@@ -49,8 +49,8 @@
+ 	compatible = "fsl,imx8mq-evk", "fsl,imx8mq";
+ 
+ 	chosen {
+-		bootargs = "console=ttymxc0,115200 earlycon=ec_imx6q,0x30860000,115200";
+-		stdout-path = &uart1;
++		bootargs = "console=ttymxc1,115200 earlycon=ec_imx6q,0x30860000,115200";
++		stdout-path = &uart2;
+ 	};
+ 
+ 	regulators {
+-- 
+2.7.4
+
